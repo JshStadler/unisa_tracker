@@ -10,3 +10,10 @@ not_found_handling = "single-page-application"
 [[kv_namespaces]]
 binding = "TRACKER"
 id = "94dcf697d00d43bab6f24986dad8c063"
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
+[observability.traces]
+enabled = false
