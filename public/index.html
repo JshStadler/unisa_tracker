@@ -315,7 +315,13 @@
     font-size: 10px; font-family: 'JetBrains Mono', monospace;
     color: var(--text-faint); letter-spacing: 0.15em; text-transform: uppercase;
   }
-  .month-strip-scale { position: relative; padding: 10px 20px 10px 0; height: 36px; }
+  .month-strip-scale {
+    position: relative;
+    padding: 10px 0;
+    height: 36px;
+    /* Match .month-grid: reserve 20px on the right so ticks align with the grid below */
+    margin-right: 20px;
+  }
   .month-strip-scale .month-label { top: 10px; }
 
   .tooltip {
