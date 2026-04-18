@@ -1,0 +1,7 @@
+name = "unisa-tracker"
+pages_build_output_dir = "public"
+compatibility_date = "2025-01-01"
+
+[[kv_namespaces]]
+binding = "TRACKER"
+id = "REPLACE_WITH_ID_FROM_WRANGLER_KV_CREATE"
