@@ -1,79 +1,67 @@
-# UNISA Tracker — Cloudflare Pages deployment
+# UNISA Tracker — Cloudflare Workers deployment
 
-Static tracker with server-backed dates (Cloudflare KV) and password-gated editing.
+Static tracker + auth-gated API, deployed as a single Cloudflare Worker with static assets.
 Read access is public; writes require unlocking via the `🔒 Unlock to edit` button.
 
 ## Project layout
 
 ```
 public/
-  index.html              Tracker UI (modified: loads state from /api/state)
-functions/api/
-  _auth.js                HMAC-signed cookie helpers (shared)
-  auth.js                 GET/POST/DELETE /api/auth
-  state.js                GET/PUT /api/state (public GET, auth-gated PUT)
-wrangler.toml             Pages + KV binding config
+  index.html              Tracker UI (served via Workers Assets)
+src/
+  worker.js               Single entry point: routes /api/* and serves assets
+wrangler.toml             Worker + Assets + KV config
 .dev.vars.example         Copy to .dev.vars for local dev
 ```
 
+## Routes
+
+- `GET  /api/auth`   → `{ authed: boolean }`
+- `POST /api/auth`   → body `{ password }` → sets HMAC-signed cookie on success
+- `DELETE /api/auth` → clears cookie
+- `GET  /api/state`  → `{ version, data: { completion, dates } }` — public
+- `PUT  /api/state`  → body `{ version, data }` — requires auth, 409 on version mismatch
+- everything else    → served from `/public` via the `ASSETS` binding
+
 ## One-time setup
 
-### 1. Install wrangler
-
-```bash
-npm install -g wrangler
-wrangler login
-```
-
-### 2. Create the KV namespace
+### 1. Create the KV namespace
 
 ```bash
 wrangler kv namespace create TRACKER
 ```
 
-This prints something like:
+Copy the printed `id` into `wrangler.toml`, replacing `REPLACE_WITH_ID_FROM_WRANGLER_KV_CREATE`.
 
-```
-[[kv_namespaces]]
-binding = "TRACKER"
-id = "abc123..."
-```
+### 2. Push to Git + connect to Cloudflare
 
-Copy the `id` value into `wrangler.toml`, replacing `REPLACE_WITH_ID_FROM_WRANGLER_KV_CREATE`.
+Commit and push to your Git repo. Then in the dashboard:
 
-### 3. Create the Pages project
+**Workers & Pages → Create → Workers → Import a repository**
 
-```bash
-wrangler pages project create unisa-tracker --production-branch main
-```
+Pick the repo. Cloudflare will auto-detect `wrangler.toml` and default to `npx wrangler deploy`, which is correct this time.
 
-### 4. Set secrets
+### 3. Set secrets
+
+Two options — either from your terminal:
 
 ```bash
-# Your admin password (whatever you want to type to unlock)
-wrangler pages secret put ADMIN_PASSWORD --project-name unisa-tracker
-
-# A random 32+ char string for signing auth cookies. Generate with:
-#   openssl rand -base64 32
-wrangler pages secret put SESSION_SECRET --project-name unisa-tracker
+wrangler secret put ADMIN_PASSWORD
+wrangler secret put SESSION_SECRET   # use: openssl rand -base64 32
 ```
 
-### 5. Bind the KV namespace to the Pages project
+Or via the dashboard: **Workers & Pages → unisa-tracker → Settings → Variables and Secrets → Add**. Mark both as type "Secret".
 
-The `wrangler.toml` binding only covers local dev. For production, bind it in the dashboard:
+### 4. Deploy
 
-**Cloudflare dashboard → Workers & Pages → unisa-tracker → Settings → Bindings → Add → KV namespace**
-- Variable name: `TRACKER`
-- KV namespace: `TRACKER` (the one created in step 2)
-- Apply to both Production and Preview environments.
-
-### 6. Deploy
+If connected via Git, just push to your production branch — Cloudflare auto-deploys.
+If deploying from your machine:
 
 ```bash
-wrangler pages deploy public --project-name unisa-tracker
+wrangler deploy
 ```
 
-Your site is live at `https://unisa-tracker.pages.dev` (or your custom domain).
+Your site is live at `https://unisa-tracker.<your-subdomain>.workers.dev` (or your custom domain).
 
 ## Local development
 
@@ -81,29 +69,28 @@ Your site is live at `https://unisa-tracker.pages.dev` (or your custom domain).
 cp .dev.vars.example .dev.vars
 # edit .dev.vars with a local password + session secret
 
-wrangler pages dev public
+wrangler dev
 ```
 
-Opens on `http://localhost:8788`. KV reads/writes use a local filesystem-backed namespace — no production data touched.
+Opens on `http://localhost:8787`. KV reads/writes use a local filesystem-backed namespace — no production data touched.
 
 ## How it works
 
-- **Read:** `GET /api/state` → returns `{version, data: {completion, dates}}` from KV. Public, no auth.
-- **Write:** `PUT /api/state` → requires valid `tracker_auth` cookie. Body is `{version, data}`; server rejects with 409 if client's version is stale (two-tab conflict), and the client rebases and retries once automatically.
-- **Auth:** `POST /api/auth {password}` → HMAC-signed cookie, 30-day expiry, HttpOnly + SameSite=Strict. No session in KV — signature is self-validating.
-- **Lock:** clicking the green `🔓` button calls `DELETE /api/auth` to clear the cookie.
+- **Assets** — the `[assets]` binding serves everything in `./public` directly (HTML, fonts, etc). The Worker only handles paths it explicitly routes; everything else falls through to `env.ASSETS.fetch(request)`.
+- **Auth** — `POST /api/auth` with the right password returns a signed cookie (HMAC-SHA256 over payload `{iat, exp}`, 30-day expiry). `PUT /api/state` verifies the signature per-request; no session storage in KV.
+- **Concurrency** — KV holds `{version, data}`. Every write bumps `version`. PUTs include the version the client thinks is current; a mismatch returns 409 and the client rebases once automatically.
 
 ## Updating the tracker later
 
-Just edit `public/index.html` and rerun `wrangler pages deploy public --project-name unisa-tracker`. State in KV is preserved across deploys.
+Edit `public/index.html` (or `src/worker.js`) and push. KV state is preserved across deploys.
 
 ## Resetting state
 
-From the footer while unlocked: `↺ Reset overrides` clears all dates and completion overrides.
-Or nuke directly: `wrangler kv key delete --binding=TRACKER "state"` (use `--remote` for production).
+From the footer while unlocked: `↺ Reset overrides` clears everything.
+Or directly: `wrangler kv key delete --binding=TRACKER --remote "state"`.
 
 ## Security notes
 
-- The cookie is `HttpOnly` + `SameSite=Strict`, so it can't be read by JS or sent cross-site.
-- There is no rate limiting on `/api/auth` — family-only site, password is the only gate. If the URL ever leaks publicly, rotate `ADMIN_PASSWORD` and consider adding rate limiting.
-- Rotating `SESSION_SECRET` invalidates all existing sessions (everyone has to unlock again). Useful if you ever suspect cookie compromise.
+- Cookie is `HttpOnly` + `SameSite=Strict`; can't be read by JS or sent cross-site.
+- No rate limiting on `/api/auth` — family-only site, password is the only gate.
+- Rotating `SESSION_SECRET` invalidates all existing sessions. Useful if you ever suspect cookie compromise.
