@@ -9,4 +9,4 @@ not_found_handling = "single-page-application"
 
 [[kv_namespaces]]
 binding = "TRACKER"
-id = "REPLACE_WITH_ID_FROM_WRANGLER_KV_CREATE"
+id = "94dcf697d00d43bab6f24986dad8c063"
