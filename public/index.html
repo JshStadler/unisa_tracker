@@ -569,6 +569,34 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="authModal">
+  <div class="modal">
+    <h3>Unlock editing</h3>
+    <div class="modal-sub">Enter the admin password to edit dates and completion.</div>
+
+    <form id="authForm" class="edit-section" autocomplete="on">
+      <input type="text" name="username" value="admin" autocomplete="username"
+             style="position:absolute; left:-9999px" tabindex="-1" aria-hidden="true">
+      <div class="form-field" style="margin-top: 8px;">
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" name="password"
+               autocomplete="current-password" autofocus>
+      </div>
+      <div class="form-hint" id="authError" style="display:none; color: var(--due-soon);">
+        Wrong password.
+      </div>
+    </form>
+
+    <div class="modal-actions">
+      <div></div>
+      <div class="right-actions">
+        <button type="button" class="btn" id="authCancel">Cancel</button>
+        <button type="button" class="btn primary" id="authSubmit">Unlock</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ==========================================================
 // Base data
