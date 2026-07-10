@@ -1,6 +1,10 @@
 import { DUE_HOUR, DUE_SOON_DAYS, MODULES, OPEN_HORIZON_DAYS, YEAR } from './modules.js';
 
 const MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, sept:8, oct:9, nov:10, dec:11 };
+const TIMELINE_START = new Date(YEAR, 3, 1);
+const TIMELINE_END = new Date(YEAR, 8, 30, 23, 59, 59);
+const TIMELINE_MS = TIMELINE_END - TIMELINE_START;
+const TIMELINE_MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'];
 const $ = (id) => document.getElementById(id);
 const stateEmpty = () => ({ completion: {}, dates: {} });
 
@@ -32,6 +36,10 @@ function formatDate(date, options = { day:'numeric', month:'short' }) {
   return date ? date.toLocaleDateString('en-GB', options) : '—';
 }
 function daysUntil(now, date) { return Math.ceil((date - now) / 86400000); }
+function timelinePct(date) {
+  const bounded = Math.max(TIMELINE_START.getTime(), Math.min(TIMELINE_END.getTime(), date.getTime()));
+  return ((bounded - TIMELINE_START.getTime()) / TIMELINE_MS) * 100;
+}
 function statusLabel(item) {
   if (item.isDone) return 'Completed';
   if (item.status === 'overdue') return 'Overdue';
@@ -123,7 +131,7 @@ function render() {
   $('doneCount').textContent = done; $('totalCount').textContent = all.length;
   const percentage = all.length ? Math.round(done / all.length * 100) : 0;
   $('donePct').textContent = `${percentage}% complete`; $('progressFill').style.width = `${percentage}%`;
-  $('openCount').textContent = open === open + pointSoon ? open : `${open}–${open + pointSoon}`;
+  $('openCount').textContent = pointSoon ? `${open}–${open + pointSoon}` : String(open);
   $('dueSoonCount').textContent = dueSoon;
   if (next) {
     const days = daysUntil(now, next.dueDate);
@@ -133,14 +141,47 @@ function render() {
   } else {
     $('nextTitle').textContent = 'All caught up'; $('nextDue').textContent = 'No upcoming assessments'; $('nextCountdown').textContent = '🎉';
   }
-  renderModules(modules);
+  renderModules(modules, now, next);
 }
 
-function renderModules(modules) {
+function createTimelineHeader() {
+  const header = document.createElement('div'); header.className = 'timeline-header';
+  const label = document.createElement('div'); label.className = 'timeline-label'; label.textContent = 'Timeline';
+  const scale = document.createElement('div'); scale.className = 'timeline-scale';
+  TIMELINE_MONTHS.forEach((monthName, index) => {
+    const date = new Date(YEAR, 3 + index, 1);
+    const left = timelinePct(date);
+    const tick = document.createElement('div'); tick.className = 'month-tick'; tick.style.left = `${left}%`;
+    const month = document.createElement('div'); month.className = 'month-label'; month.style.left = `${left}%`; month.textContent = monthName;
+    scale.append(tick, month);
+  });
+  header.append(label, scale);
+  return header;
+}
+
+function createTimelineGrid() {
+  const grid = document.createElement('div'); grid.className = 'timeline-grid';
+  TIMELINE_MONTHS.forEach((_, index) => {
+    const tick = document.createElement('div'); tick.className = 'month-tick'; tick.style.left = `${timelinePct(new Date(YEAR, 3 + index, 1))}%`;
+    grid.append(tick);
+  });
+  return grid;
+}
+
+function addTodayLine(timeline, now, showLabel) {
+  if (now < TIMELINE_START || now > TIMELINE_END) return;
+  const line = document.createElement('div'); line.className = `today-line${showLabel ? '' : ' no-label'}`;
+  line.style.left = `${timelinePct(now)}%`;
+  timeline.append(line);
+}
+
+function renderModules(modules, now, next) {
   const container = $('tracker');
-  container.replaceChildren();
+  container.replaceChildren(createTimelineHeader());
   let lastLevel = null;
   let visible = 0;
+  let todayLabelShown = false;
+
   for (const module of modules) {
     const items = module.items.filter((item) => currentFilter === 'all' || (currentFilter === 'completed' ? item.isDone : !item.isDone));
     if (!items.length) continue;
@@ -149,6 +190,7 @@ function renderModules(modules) {
       const title = document.createElement('div'); title.className = 'level-title'; title.textContent = `Level ${module.level}`;
       container.append(title); lastLevel = module.level;
     }
+
     const row = document.createElement('section'); row.className = 'module';
     const info = document.createElement('div'); info.className = 'module-info';
     const code = document.createElement('div'); code.className = 'module-code';
@@ -158,29 +200,47 @@ function renderModules(modules) {
     const title = document.createElement('div'); title.className = 'module-title'; title.textContent = module.title;
     const progress = document.createElement('div'); progress.className = 'module-progress'; progress.textContent = `${module.items.filter((item) => item.isDone).length}/${module.items.length} done`;
     info.append(code, title, progress);
-    const assessments = document.createElement('div'); assessments.className = 'assessments';
-    for (const item of items) assessments.append(createAssessmentButton(item));
-    row.append(info, assessments); container.append(row);
+
+    const timeline = document.createElement('div'); timeline.className = 'timeline';
+    timeline.append(createTimelineGrid());
+    for (const item of items) {
+      const lane = document.createElement('div'); lane.className = 'timeline-lane';
+      lane.append(createAssessmentBar(item, next));
+      timeline.append(lane);
+    }
+    addTodayLine(timeline, now, !todayLabelShown);
+    todayLabelShown = true;
+    row.append(info, timeline); container.append(row);
   }
+
   if (!visible) {
     const empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = 'No assessments match this filter.'; container.append(empty);
   }
 }
 
-function createAssessmentButton(item) {
-  const button = document.createElement('button'); button.type = 'button'; button.className = `assessment ${item.status}`;
+function createAssessmentBar(item, next) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `assessment-bar ${item.status}`;
   button.style.setProperty('--module-color', item.moduleColor);
   button.setAttribute('aria-label', `${item.moduleCode} assessment ${item.n}, ${statusLabel(item)}${item.dueDate ? `, due ${formatDate(item.dueDate)}` : ''}`);
-  const heading = document.createElement('div'); heading.className = 'assessment-title';
-  const name = document.createElement('span'); name.textContent = `Assessment ${item.n}`;
-  const status = document.createElement('span'); status.className = 'assessment-status'; status.textContent = statusLabel(item);
-  heading.append(name, status);
-  const meta = document.createElement('div'); meta.className = 'assessment-meta';
-  meta.textContent = item.dueDate ? `${item.openDate ? `${formatDate(item.openDate)} → ` : ''}${formatDate(item.dueDate)} · 20:00` : 'No date recorded';
-  button.append(heading, meta);
-  if (item.datesCustomised || item.completionOverride) {
-    const edited = document.createElement('div'); edited.className = 'assessment-edited'; edited.textContent = 'Manual override'; button.append(edited);
+  if (next && next.key === item.key) button.classList.add('next-up');
+
+  if (!item.dueDate) {
+    button.classList.add('point');
+    button.style.left = '0%';
+  } else if (item.openDate) {
+    const left = timelinePct(item.openDate);
+    const width = Math.max(2, timelinePct(item.dueDate) - left);
+    button.style.left = `${left}%`;
+    button.style.width = `${width}%`;
+    button.textContent = `A${item.n} · ${formatDate(item.openDate)} → ${formatDate(item.dueDate)}`;
+  } else {
+    button.classList.add('point');
+    button.style.left = `calc(${timelinePct(item.dueDate)}% - 7px)`;
   }
+
+  button.title = `${item.moduleCode} Assessment ${item.n} · ${statusLabel(item)}${item.dueDate ? ` · Due ${formatDate(item.dueDate)} at 20:00` : ''}${item.datesCustomised || item.completionOverride ? ' · Manual override' : ''}`;
   button.addEventListener('click', () => openEditor(item, button));
   return button;
 }
