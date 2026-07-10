@@ -1,27 +1,34 @@
 # UNISA Tracker — Cloudflare Workers deployment
 
-Static tracker + auth-gated API, deployed as a single Cloudflare Worker with static assets.
-Read access is public; writes require unlocking via the `🔒 Unlock to edit` button.
+Static assessment tracker with a small authenticated API, deployed as one Cloudflare Worker with static assets.
+
+Read access is public. Changes require unlocking through the **Unlock to edit** button.
 
 ## Project layout
 
-```
+```text
 public/
-  index.html              Tracker UI (served via Workers Assets)
+  index.html              Tracker UI served through Workers Assets
+  favicon.svg
 src/
-  worker.js               Single entry point: routes /api/* and serves assets
-wrangler.toml             Worker + Assets + KV config
-.dev.vars.example         Copy to .dev.vars for local dev
+  worker.js               API routes, authentication and static asset fallback
+test/
+  worker.test.js          State/date validation tests
+.github/workflows/
+  check.yml               Tests and Wrangler deployment validation
+wrangler.toml             Worker, Assets, KV and observability configuration
+package.json              Pinned development tooling and scripts
+.dev.vars.example         Local secret template
 ```
 
-## Routes
+## API routes
 
-- `GET  /api/auth`   → `{ authed: boolean }`
-- `POST /api/auth`   → body `{ password }` → sets HMAC-signed cookie on success
-- `DELETE /api/auth` → clears cookie
-- `GET  /api/state`  → `{ version, data: { completion, dates } }` — public
-- `PUT  /api/state`  → body `{ version, data }` — requires auth, 409 on version mismatch
-- everything else    → served from `/public` via the `ASSETS` binding
+- `GET /api/auth` returns the current authentication state.
+- `POST /api/auth` accepts `{ "password": "..." }` and sets a signed session cookie.
+- `DELETE /api/auth` clears the session cookie.
+- `GET /api/state` returns `{ version, data: { completion, dates } }`.
+- `PUT /api/state` validates and saves `{ version, data }`; authentication is required.
+- Other paths are served from `public/` through the `ASSETS` binding.
 
 ## One-time setup
 
@@ -31,66 +38,81 @@ wrangler.toml             Worker + Assets + KV config
 wrangler kv namespace create TRACKER
 ```
 
-Copy the printed `id` into `wrangler.toml`, replacing `REPLACE_WITH_ID_FROM_WRANGLER_KV_CREATE`.
+Copy the resulting namespace ID into `wrangler.toml`.
 
-### 2. Push to Git + connect to Cloudflare
-
-Commit and push to your Git repo. Then in the dashboard:
-
-**Workers & Pages → Create → Workers → Import a repository**
-
-Pick the repo. Cloudflare will auto-detect `wrangler.toml` and default to `npx wrangler deploy`, which is correct this time.
-
-### 3. Set secrets
-
-Two options — either from your terminal:
+### 2. Configure secrets
 
 ```bash
 wrangler secret put ADMIN_PASSWORD
-wrangler secret put SESSION_SECRET   # use: openssl rand -base64 32
+wrangler secret put SESSION_SECRET
 ```
 
-Or via the dashboard: **Workers & Pages → unisa-tracker → Settings → Variables and Secrets → Add**. Mark both as type "Secret".
-
-### 4. Deploy
-
-If connected via Git, just push to your production branch — Cloudflare auto-deploys.
-If deploying from your machine:
+Generate a strong session secret with:
 
 ```bash
-wrangler deploy
+openssl rand -base64 32
 ```
 
-Your site is live at `https://unisa-tracker.<your-subdomain>.workers.dev` (or your custom domain).
+The same secrets can be added in **Workers & Pages → unisa-tracker → Settings → Variables and Secrets**.
+
+### 3. Deploy
+
+When the repository is connected to Cloudflare, pushes to the production branch deploy automatically. To deploy locally:
+
+```bash
+npm install
+npm run deploy
+```
 
 ## Local development
 
 ```bash
 cp .dev.vars.example .dev.vars
-# edit .dev.vars with a local password + session secret
-
-wrangler dev
+# Add local ADMIN_PASSWORD and SESSION_SECRET values
+npm install
+npm run dev
 ```
 
-Opens on `http://localhost:8787`. KV reads/writes use a local filesystem-backed namespace — no production data touched.
+The local Worker normally opens at `http://localhost:8787`. Local KV storage does not modify production data.
 
-## How it works
+## Checks
 
-- **Assets** — the `[assets]` binding serves everything in `./public` directly (HTML, fonts, etc). The Worker only handles paths it explicitly routes; everything else falls through to `env.ASSETS.fetch(request)`.
-- **Auth** — `POST /api/auth` with the right password returns a signed cookie (HMAC-SHA256 over payload `{iat, exp}`, 30-day expiry). `PUT /api/state` verifies the signature per-request; no session storage in KV.
-- **Concurrency** — KV holds `{version, data}`. Every write bumps `version`. PUTs include the version the client thinks is current; a mismatch returns 409 and the client rebases once automatically.
+Run the validation tests:
 
-## Updating the tracker later
+```bash
+npm test
+```
 
-Edit `public/index.html` (or `src/worker.js`) and push. KV state is preserved across deploys.
+Run tests followed by a Wrangler dry-run build:
+
+```bash
+npm run check
+```
+
+GitHub Actions runs these checks for pushes to `main` and pull requests.
+
+## Storage and conflict handling
+
+KV stores one versioned state document under the `state` key. Each successful save increments the version. A stale client receives HTTP `409` and can reload/rebase its changes.
+
+The Worker validates assessment keys, completion values, date formats, object shape, entry count and payload size before saving. The previous valid state is copied to `state:backup` before each write.
+
+## Security
+
+- Sessions use an HMAC-SHA256 signed, `HttpOnly`, `SameSite=Strict` cookie.
+- Production cookies include the `Secure` attribute.
+- Failed logins are limited per connecting IP using short-lived KV counters.
+- API responses are not cached.
+- Static and API responses include defensive browser security headers.
+- State writes require authentication and strict server-side validation.
+- Rotating `SESSION_SECRET` invalidates all current sessions.
 
 ## Resetting state
 
-From the footer while unlocked: `↺ Reset overrides` clears everything.
-Or directly: `wrangler kv key delete --binding=TRACKER --remote "state"`.
+Use **Reset overrides** in the footer while unlocked, or delete the production KV key directly:
 
-## Security notes
+```bash
+wrangler kv key delete --binding=TRACKER --remote "state"
+```
 
-- Cookie is `HttpOnly` + `SameSite=Strict`; can't be read by JS or sent cross-site.
-- No rate limiting on `/api/auth` — family-only site, password is the only gate.
-- Rotating `SESSION_SECRET` invalidates all existing sessions. Useful if you ever suspect cookie compromise.
+The backup can be inspected or restored separately from the `state:backup` key if needed.
