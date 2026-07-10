@@ -9,4 +9,5 @@ const KV_KEY = "state";
 const BACKUP_KV_KEY = "state:backup";
 const EMPTY_STATE = Object.freeze({ completion: {}, dates: {} });
 
-const MAX_STATE_BYTES = 64 * 1024
+const MAX_STATE_BYTES = 64 * 1024;
+const MAX_STATE_ENTRIES = 250;
