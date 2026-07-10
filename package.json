@@ -6,7 +6,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "check": "npm run test && wrangler deploy --dry-run"
+    "check:syntax": "node --check public/modules.js && node --check public/app.js && node --check src/worker.js",
+    "check": "npm run check:syntax && npm run test && wrangler deploy --dry-run"
   },
   "devDependencies": {
     "vitest": "^3.2.4",
