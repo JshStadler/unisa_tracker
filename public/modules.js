@@ -62,7 +62,7 @@ export const MODULES = [
     { n: 1, done: true },
     { n: 2, done: true, open: '13 May', due: '10 Jun' },
     { n: 3, done: true, due: '8 Jul' },
-    { n: 4, due: '12 Aug' },
+    { n: 4, done: true, due: '12 Aug' },
     { n: 5, due: '26 Aug' },
   ]},
   { level: 2, code: 'STA1610', title: 'Introduction to Statistics', color: 'var(--c-sta1610)', moodleId: 87569, assessments: [
