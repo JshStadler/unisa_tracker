@@ -18,7 +18,7 @@ export const MODULES = [
   ]},
   { level: 1, code: 'COS1512', title: 'Introduction to Programming II', color: 'var(--c-cos1512)', moodleId: 86823, assessments: [
     { n: 1, done: true },
-    { n: 2, open: '15 Jun', due: '28 Jul' },
+    { n: 2, done: true, open: '15 Jun', due: '28 Jul' },
     { n: 3, open: '8 Jul', due: '18 Aug' },
     { n: 4, open: '24 Jul', due: '10 Sep' },
   ]},
