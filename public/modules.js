@@ -69,7 +69,7 @@ export const MODULES = [
     { n: 1, done: true, open: '4 May', due: '11 May' },
     { n: 2, done: true, open: '2 Jun', due: '9 Jun' },
     { n: 3, done: true, open: '30 Jun', due: '6 Jul' },
-    { n: 4, open: '28 Jul', due: '4 Aug' },
+    { n: 4, done: true, open: '28 Jul', due: '4 Aug' },
     { n: 5, open: '11 Aug', due: '31 Aug' },
   ]},
 ];
