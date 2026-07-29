@@ -49,7 +49,7 @@ export const MODULES = [
     { n: 4, done: true, open: '18 May', due: '14 Sep' },
     { n: 5, done: true, open: '8 Jun', due: '14 Sep' },
     { n: 6, done: true, open: '6 Jul', due: '14 Sep' },
-    { n: 7, open: '27 Jul', due: '14 Sep' },
+    { n: 7, done: true, open: '27 Jul', due: '14 Sep' },
     { n: 8, open: '17 Aug', due: '14 Sep' },
   ]},
   { level: 1, code: 'MAT1512', title: 'Calculus A', color: 'var(--c-mat1512)', moodleId: 88603, assessments: [
