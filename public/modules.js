@@ -27,7 +27,7 @@ export const MODULES = [
     { n: 2, done: true },
     { n: 3, done: true, open: '1 Apr', due: '22 Jul' },
     { n: 4, due: '13 Aug' },
-    { n: 5, due: '2 Sep' },
+    { n: 5, done: true, due: '2 Sep' },
   ]},
   { level: 1, code: 'INF1505', title: 'Introduction to Business Information Systems', color: 'var(--c-inf1505)', moodleId: 87486, assessments: [
     { n: 1, done: true, open: '24 Apr', due: '5 May' },
