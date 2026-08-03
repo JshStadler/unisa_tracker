@@ -20,7 +20,7 @@ export const MODULES = [
     { n: 1, done: true },
     { n: 2, done: true, open: '15 Jun', due: '28 Jul' },
     { n: 3, open: '8 Jul', due: '18 Aug' },
-    { n: 4, open: '24 Jul', due: '10 Sep' },
+    { n: 4, done: true, open: '24 Jul', due: '10 Sep' },
   ]},
   { level: 1, code: 'COS1521', title: 'Computer Systems: Fundamental Concepts', color: 'var(--c-cos1521)', moodleId: 86824, assessments: [
     { n: 1, done: true },
