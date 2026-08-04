@@ -8,7 +8,7 @@ export const MODULES = [
     { n: 1, done: true, due: '30 Apr' },
     { n: 2, done: true, open: '29 Apr', due: '8 Jun' },
     { n: 3, open: '4 May', due: '31 Jul' },
-    { n: 4, open: '3 Aug', due: '11 Sep' },
+    { n: 4, done: true, open: '3 Aug', due: '11 Sep' },
   ]},
   { level: 1, code: 'COS1511', title: 'Introduction to Programming I', color: 'var(--c-cos1511)', moodleId: 86821, assessments: [
     { n: 1, done: true, open: '1 May', due: '15 May' },
