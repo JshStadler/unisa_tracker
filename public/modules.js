@@ -56,7 +56,7 @@ export const MODULES = [
     { n: 1, done: true, open: '1 Apr', due: '26 May' },
     { n: 2, done: true, due: '22 Jun' },
     { n: 3, done: true, due: '27 Jul' },
-    { n: 4, due: '17 Aug' },
+    { n: 4, done: true, due: '17 Aug' },
   ]},
   { level: 2, code: 'COS2626', title: 'Computer Networks I', color: 'var(--c-cos2626)', moodleId: 86834, assessments: [
     { n: 1, done: true },
