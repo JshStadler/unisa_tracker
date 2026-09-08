@@ -33,7 +33,7 @@ export const MODULES = [
     { n: 1, done: true, open: '24 Apr', due: '5 May' },
     { n: 2, done: true, open: '1 Jun', due: '17 Jun' },
     { n: 3, done: true, open: '29 Jul', due: '11 Aug' },
-    { n: 4, open: '7 Sep', due: '14 Sep' },
+    { n: 4, done: true, open: '7 Sep', due: '14 Sep' },
   ]},
   { level: 1, code: 'MAT1503', title: 'Linear Algebra I', color: 'var(--c-mat1503)', moodleId: 88600, assessments: [
     { n: 1, done: true, open: '1 Apr', due: '29 May' },
