@@ -40,7 +40,7 @@ export const MODULES = [
     { n: 2, done: true, open: '30 May', due: '30 Jun' },
     { n: 3, done: true, open: '1 Apr', due: '31 Jul' },
     { n: 4, done: true, open: '1 Jul', due: '31 Aug' },
-    { n: 5, due: '11 Sep' },
+    { n: 5, done: true, due: '11 Sep' },
   ]},
   { level: 1, code: 'INF1511', title: 'Visual Programming I', color: 'var(--c-inf1511)', moodleId: 87487, assessments: [
     { n: 1, done: true },
